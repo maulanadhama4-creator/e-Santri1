@@ -251,6 +251,16 @@ body.locked #auth{display:flex}
 .ds-back{background:none;border:0;color:var(--text);font:inherit;font-weight:700;cursor:pointer;padding:6px 0;margin:0 0 8px}
 @media(max-width:720px){.ds-bar .sp{display:none}}
 .ds-form[hidden]{display:none}
+/* ===== Pojok Curhat ===== */
+.cu-bal{background:var(--greenbg);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px}
+.cu-bal .ds-body{margin-top:6px}
+.cu-chk{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.cu-chk input{width:18px;height:18px;accent-color:var(--green)}
+.cu-st{font-weight:700}
+.cu-st.baru{background:#fde8dd;color:#8a3a14;border-color:#f6c9b3}
+.cu-st.dibaca{background:#e5ecfb;color:#25437a;border-color:#c5d3f1}
+.cu-st.selesai{background:var(--green);color:#062a27;border-color:var(--green)}
+.cu-rep{display:grid;gap:8px;margin-top:12px}
 </style>
 </head>
 <body class="locked">
@@ -373,10 +383,40 @@ if(a==="delt"||a==="delr"){if(!el.dataset.arm){el.dataset.arm="1";el.textContent
 if(a==="delt")dsDone(sb.from("topics").delete().eq("id",DS.cur.id),function(){dsList()});else dsDone(sb.from("replies").delete().eq("id",id),function(){dsOpen(DS.cur.id)})}
 });
 document.addEventListener("change",function(e){if(e.target.id==="dsmat"){DS.m=e.target.value;dsRenderList()}});
+var CU={tab:"saya"};
+var CU_ST={baru:"Terkirim",dibaca:"Sudah dibaca",selesai:"Selesai"};
+function cuRoot(){return document.getElementById("curoot")}
+function cuMsg(t,ok){var e=document.getElementById("cumsg");if(e){e.textContent=t||"";e.className="ds-msg"+(ok?"":" err");e.hidden=!t}}
+function curhatPage(){return '<main class="ds"><div class="crumb"><a href="#beranda">Beranda</a> › Pengaduan › Pojok Curhat</div><h2>Pojok Curhat</h2><div id="curoot"></div></main>'}
+function curhatInit(){if(!SESS||!sb)return;CU.tab="saya";cuRender()}
+function cuStChip(s){return '<span class="ds-chip cu-st '+dsE(s)+'">'+dsE(CU_ST[s]||s)+'</span>'}
+function cuRender(){var r=cuRoot();if(!r)return;var mod=dsMod();
+var kat=["Curhat","Pengaduan","Saran"].map(function(k){return '<option>'+k+'</option>'}).join("");
+var h='<p class="ds-intro">Tempat menyampaikan curahan hati, pengaduan, atau saran dengan aman.</p><div class="ds-adab"><b>Privasi Anda</b>Kiriman hanya bisa dibaca oleh Anda dan pengajar. Santri lain tidak dapat melihatnya. Centang "Kirim tanpa nama" bila tidak ingin nama Anda ditampilkan kepada pengajar. Dalam keadaan mendesak atau bila Anda merasa tidak aman, segera temui pengajar atau orang dewasa yang Anda percaya.</div>';
+if(mod)h+='<div class="ds-bar"><div class="ds-tabs"><button type="button" data-cu="tab" data-v="saya" class="'+(CU.tab==="saya"?"on":"")+'">Kiriman saya</button><button type="button" data-cu="tab" data-v="masuk" class="'+(CU.tab==="masuk"?"on":"")+'">Kotak masuk</button></div></div>';
+if(CU.tab==="saya")h+='<div class="ds-form"><label for="cuk">Jenis</label><select class="ds-sel" id="cuk">'+kat+'</select><label for="cui">Tulis di sini</label><textarea class="ds-ta" id="cui" maxlength="4000" placeholder="Ceritakan dengan bebas. Minimal 10 karakter."></textarea><label class="cu-chk"><input type="checkbox" id="cua"> Kirim tanpa nama</label><div class="ds-row"><button type="button" class="ds-btn" data-cu="send">Kirim</button></div></div>';
+h+='<div class="ds-msg err" id="cumsg" hidden></div><h4 class="ds-rh">'+(CU.tab==="saya"?"Kiriman saya":"Kotak masuk")+'</h4><div id="culist"><div class="ds-msg">Memuat...</div></div>';
+r.innerHTML=h;cuLoad()}
+function cuLoad(){var p=CU.tab==="saya"?sb.from("curhat").select("*").eq("author_id",SESS.id).order("created_at",{ascending:false}):sb.rpc("curhat_moderator_list");
+p.then(function(x){var l=document.getElementById("culist");if(!l)return;if(x.error){l.innerHTML='<div class="ds-msg err">Data tidak dapat dimuat. Coba lagi nanti.</div>';return}var a=x.data||[];if(!a.length){l.innerHTML='<div class="ds-msg">'+(CU.tab==="saya"?"Belum ada kiriman.":"Belum ada kiriman masuk.")+'</div>';return}
+l.innerHTML=a.map(CU.tab==="saya"?cuMine:cuInbox).join("")}).catch(function(){var l=document.getElementById("culist");if(l)l.innerHTML='<div class="ds-msg err">Tidak dapat terhubung ke server.</div>'})}
+function cuBal(c){return c.balasan?'<div class="cu-bal"><div class="ds-meta"><b>Balasan dari '+dsE(c.dibalas_oleh||"Pengajar")+'</b><span>'+dsAgo(c.dibalas_at)+'</span></div><div class="ds-body">'+dsE(c.balasan)+'</div></div>':""}
+function cuMine(c){return '<div class="ds-reply"><div class="ds-meta"><span class="ds-chip">'+dsE(c.kategori)+'</span>'+cuStChip(c.status)+(c.anonim?'<span class="ds-chip">Tanpa nama</span>':"")+'<span>'+dsAgo(c.created_at)+'</span></div><div class="ds-body">'+dsE(c.isi)+'</div>'+cuBal(c)+'<div class="ds-acts"><button type="button" class="ds-btn d s" data-cu="del" data-id="'+dsE(c.id)+'">Hapus</button></div></div>'}
+function cuInbox(c){var so=["baru","dibaca","selesai"].map(function(s){return '<option value="'+s+'"'+(c.status===s?" selected":"")+'>'+CU_ST[s]+'</option>'}).join("");
+return '<div class="ds-reply"><div class="ds-meta"><b>'+dsE(c.pengirim)+'</b><span class="ds-chip">'+dsE(c.kategori)+'</span>'+cuStChip(c.status)+'<span>'+dsAgo(c.created_at)+'</span></div><div class="ds-body">'+dsE(c.isi)+'</div><div class="cu-rep"><label for="cub-'+dsE(c.id)+'" style="font-size:13px;font-weight:700">Balasan</label><textarea class="ds-ta" id="cub-'+dsE(c.id)+'" maxlength="4000" placeholder="Tulis balasan (boleh dikosongkan bila hanya mengubah status)">'+dsE(c.balasan||"")+'</textarea><div class="ds-row"><select class="ds-sel" id="cus-'+dsE(c.id)+'" aria-label="Status">'+so+'</select><button type="button" class="ds-btn s" data-cu="bal" data-id="'+dsE(c.id)+'">Simpan</button></div></div></div>'}
+document.addEventListener("click",function(e){var el=e.target.closest&&e.target.closest("[data-cu]");if(!el||!sb)return;var a=el.getAttribute("data-cu"),id=el.getAttribute("data-id");
+if(a==="tab"){CU.tab=el.getAttribute("data-v");cuRender();return}
+if(a==="send"){var i=dsV("cui");if(i.length<10)return cuMsg("Tulisan minimal 10 karakter.");if(!SESS||!SESS.id)return cuMsg("Sesi tidak valid. Muat ulang halaman lalu masuk lagi.");el.disabled=true;cuMsg("");
+sb.from("curhat").insert({author_id:SESS.id,kategori:dsV("cuk"),isi:i,anonim:document.getElementById("cua").checked}).then(function(x){el.disabled=false;if(x.error)return cuMsg("Gagal terkirim. Coba lagi.");cuRender();cuMsg("Terkirim. Terima kasih sudah berbagi.",true)}).catch(function(){el.disabled=false;cuMsg("Tidak dapat terhubung ke server.")});return}
+if(a==="del"){if(!el.dataset.arm){el.dataset.arm="1";el.textContent="Klik lagi untuk menghapus";setTimeout(function(){if(el.isConnected){delete el.dataset.arm;el.textContent="Hapus"}},3500);return}
+sb.from("curhat").delete().eq("id",id).then(function(x){if(x.error)return cuMsg("Gagal menghapus.");cuLoad()}).catch(function(){cuMsg("Tidak dapat terhubung ke server.")});return}
+if(a==="bal"){var t=dsV("cub-"+id),s=document.getElementById("cus-"+id).value;el.disabled=true;cuMsg("");
+sb.rpc("curhat_moderator_balas",{p_id:id,p_balasan:t||null,p_status:s}).then(function(x){el.disabled=false;if(x.error)return cuMsg("Gagal menyimpan. Anda mungkin tidak punya izin.");cuLoad();cuMsg("Tersimpan.",true)}).catch(function(){el.disabled=false;cuMsg("Tidak dapat terhubung ke server.")})}
+});
 var ABT=["Pondok Pesantren Sunanulhuda berdiri di atas sebuah cita-cita yang terangkum dalam visinya: berjiwa ulul ilmi, berakhlak salafi. Berjiwa ulul ilmi berarti membentuk santri yang haus akan ilmu, mendalam dalam memahaminya, dan tidak berhenti belajar. Berakhlak salafi berarti menjadikan adab, kesantunan, dan keteladanan para ulama terdahulu sebagai pegangan dalam bersikap. Ilmu yang luas tanpa akhlak akan kehilangan arah, dan akhlak yang baik tanpa ilmu akan kehilangan daya. Karena itu keduanya dirawat bersama, dari ruang kelas, majelis pengajian, hingga kehidupan sehari-hari di pesantren.", "e-Santri hadir sebagai ikhtiar untuk menghidupkan visi tersebut di ruang digital. Melalui satu platform, santri dapat mengakses materi pembelajaran, berdiskusi dengan sesama santri dan para pengajar, mencatat presensi, mengerjakan tugas dan kuis, menuliskan refleksi, hingga menjelajah koleksi E-Library. Setiap fitur disusun agar kebiasaan belajar yang baik tetap berlangsung di luar jam pelajaran: membaca, bertanya, berdiskusi, dan mengevaluasi diri, sehingga semangat ulul ilmi tumbuh sebagai kebiasaan, bukan hanya sebagai slogan.", "Meski berbasis teknologi, e-Santri tidak dimaksudkan menggantikan peran guru maupun majelis ilmu. Hubungan santri dengan para kiai dan ustadz tetap menjadi jantung pendidikan pesantren, dan platform ini hadir sebagai sarana yang mendukungnya. Dengan semangat ruang santri berkembang dan berkarya, e-Santri diharapkan menjadi tempat santri Sunanulhuda menumbuhkan kecintaan pada ilmu, menjaga adab dalam belajar, serta berani menghasilkan karya yang bermanfaat bagi pesantren, masyarakat, dan bangsa."];
 function aboutPage(){return '<main class="abt"><div class="crumb"><a href="#beranda">Beranda</a> › Umum › Tentang E-Santri</div><h2>Tentang E-Santri</h2><blockquote class="abv"><small>Visi Pondok Pesantren Sunanulhuda</small><p>Berjiwa Ulul Ilmi, Berakhlak Salafi</p></blockquote><div class="abt-t">'+ABT.map(function(t){return '<p>'+t+'</p>'}).join('')+'</div><a class="btn" href="#materi">Mulai Belajar</a></main>'}
-function page(k){if(k==="diskusi")return diskPage();if(k==="developer")return devPage();if(k==="tentang")return aboutPage();var p=P[k];return '<main><div class="crumb"><a href="#beranda">Beranda</a>'+(p.g?" › "+p.g:"")+" › "+p.t+"</div><h2>"+p.t+"</h2><p>"+p.d+'</p><div class="empty">Konten segera hadir.<div class="sk"></div><div class="sk" style="width:70%;margin:10px auto"></div><div class="sk" style="width:50%;margin:10px auto"></div></div></main>'}
-function route(){var k=(location.hash||"#beranda").slice(1);if(!P[k])k="beranda";app.innerHTML=k==="beranda"?home():page(k);buildNav(k);nav.classList.remove("open");window.scrollTo(0,0);document.body.classList.toggle("nohero",k!=="beranda");sy();post();anim();authUI();if(k==="diskusi")diskInit()}
+function page(k){if(k==="curhat")return curhatPage();if(k==="diskusi")return diskPage();if(k==="developer")return devPage();if(k==="tentang")return aboutPage();var p=P[k];return '<main><div class="crumb"><a href="#beranda">Beranda</a>'+(p.g?" › "+p.g:"")+" › "+p.t+"</div><h2>"+p.t+"</h2><p>"+p.d+'</p><div class="empty">Konten segera hadir.<div class="sk"></div><div class="sk" style="width:70%;margin:10px auto"></div><div class="sk" style="width:50%;margin:10px auto"></div></div></main>'}
+function route(){var k=(location.hash||"#beranda").slice(1);if(!P[k])k="beranda";app.innerHTML=k==="beranda"?home():page(k);buildNav(k);nav.classList.remove("open");window.scrollTo(0,0);document.body.classList.toggle("nohero",k!=="beranda");sy();post();anim();authUI();if(k==="diskusi")diskInit();if(k==="curhat")curhatInit()}
 document.getElementById("bg").onclick=function(){nav.classList.toggle("open")};
 function sy(){var y=window.scrollY,de=document.documentElement,h=de.scrollHeight-window.innerHeight,sp=document.getElementById("sp");document.body.classList.toggle("sc",y>40);if(sp)sp.style.transform="scaleX("+(h>0?Math.min(1,y/h):0).toFixed(4)+")";de.style.setProperty("--py",(Math.min(y,800)*.22).toFixed(1)+"px");de.style.setProperty("--po",(1-Math.min(1,y/650)*.9).toFixed(2))}
 window.addEventListener("scroll",sy,{passive:true});
